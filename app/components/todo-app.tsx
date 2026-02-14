@@ -71,8 +71,18 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   const handleCreateTodo = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const trimmedText = todoText.trim();
+    if (!trimmedText) {
+      setFormMessage("할 일을 입력해주세요.");
+      return;
+    }
+    if (trimmedText.length > MAX_TODO_LENGTH) {
+      setFormMessage(`할 일은 ${MAX_TODO_LENGTH}자를 초과할 수 없습니다.`);
+      return;
+    }
+
     const formData = new FormData();
-    formData.set("text", todoText);
+    formData.set("text", trimmedText);
 
     runAction(createTodo, formData, () => {
       setTodoText("");
@@ -114,9 +124,15 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   };
 
   const saveEditing = (id: string) => {
+    const trimmedText = editingText.trim();
+    if (!trimmedText || trimmedText.length > MAX_TODO_LENGTH) {
+      setFormMessage("수정 내용은 공백일 수 없고 200자 이하여야 합니다.");
+      return;
+    }
+
     const formData = new FormData();
     formData.set("id", id);
-    formData.set("text", editingText);
+    formData.set("text", trimmedText);
 
     runAction(updateTodo, formData, () => {
       setEditingId(null);
@@ -136,7 +152,6 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
           ref={todoInputRef}
           name="todo"
           type="text"
-          maxLength={MAX_TODO_LENGTH}
           placeholder="할 일을 입력하세요 (최대 200자)"
           required
           value={todoText}
@@ -212,7 +227,6 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
                       ref={editingInputRef}
                       className="edit-input"
                       type="text"
-                      maxLength={MAX_TODO_LENGTH}
                       value={editingText}
                       onChange={(event) => {
                         setEditingText(event.target.value);
