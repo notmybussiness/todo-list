@@ -1,0 +1,40 @@
+name: task-md-guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  ensure-task-md-updated:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure Task.md is updated in this PR
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          mapfile -t CHANGED < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          if [[ ${#CHANGED[@]} -eq 0 ]]; then
+            echo "No changed files."
+            exit 0
+          fi
+
+          echo "Changed files:"
+          printf '%s\n' "${CHANGED[@]}"
+
+          if printf '%s\n' "${CHANGED[@]}" | grep -qx "Task.md"; then
+            echo "Task.md update detected."
+            exit 0
+          fi
+
+          echo "::error::Task.md must be updated for every task/PR."
+          exit 1

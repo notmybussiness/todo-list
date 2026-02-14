@@ -82,6 +82,20 @@ npm run test:e2e
 - `playwright-report/`
 - `test-results/`
 
+## Task Rule Enforcement
+
+작업 단위로 `Task.md`를 최신화하고 커밋하도록 가드를 추가했습니다.
+
+로컬 훅 설치:
+
+```bash
+npm run hooks:install
+```
+
+동작:
+- `Task.md` 외 파일이 스테이징된 상태에서 `Task.md`가 함께 스테이징되지 않으면 커밋 차단
+- PR에서도 `Task.md` 미수정 시 CI(`task-md-guard`) 실패
+
 ## Deploy (Vercel)
 
 ### Preview
