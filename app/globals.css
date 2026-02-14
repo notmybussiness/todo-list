@@ -333,6 +333,71 @@ button:disabled,
   gap: 10px;
 }
 
+.dev-auth {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--radius-lg);
+  background: rgba(26, 31, 41, 0.55);
+}
+
+.dev-auth h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.dev-auth-subtitle {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.dev-auth-form {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.dev-auth-form label {
+  color: #c6cfdd;
+  font-size: 0.86rem;
+}
+
+.dev-auth-input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--stroke-soft);
+  background: rgba(18, 22, 31, 0.64);
+  color: var(--text-main);
+  padding: 10px 12px;
+}
+
+.dev-auth-input:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(176, 195, 229, 0.22);
+}
+
+.dev-auth-btn {
+  margin-top: 6px;
+  min-height: 40px;
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--radius-md);
+  color: #f9fbff;
+  font-weight: 700;
+  background: rgba(31, 37, 49, 0.64);
+  cursor: pointer;
+  transition:
+    transform 160ms var(--easing-soft),
+    border-color 160ms ease,
+    opacity 170ms ease;
+}
+
+.dev-auth-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--glow);
+}
+
 .oauth-btn {
   border: 1px solid var(--stroke-soft);
   border-radius: var(--radius-md);

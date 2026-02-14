@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AuthProviders } from "@/app/components/auth-providers";
+import { DevEmailAuth } from "@/app/components/dev-email-auth";
 import { createClient } from "@/lib/supabase/server";
 
 type LoginPageProps = {
@@ -27,6 +28,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   const errorCode = searchParams?.error ?? "";
   const errorMessage = errorMessages[errorCode] ?? "";
+  const showDevLogin =
+    process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true" || process.env.NODE_ENV !== "production";
 
   return (
     <main className="app-shell">
@@ -38,6 +41,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </header>
 
         <AuthProviders />
+        {showDevLogin ? <DevEmailAuth /> : null}
         <p className="form-message" role="status" aria-live="polite">
           {errorMessage}
         </p>

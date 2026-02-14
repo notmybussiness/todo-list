@@ -18,6 +18,9 @@ Google/Kakao OAuth 로그인 후 사용자별 TODO를 분리 관리합니다.
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
+NEXT_PUBLIC_ENABLE_DEV_LOGIN=false
+NEXT_PUBLIC_DEV_LOGIN_EMAIL=dev.e2e@example.com
+NEXT_PUBLIC_DEV_LOGIN_PASSWORD=DevLogin#123456
 ```
 
 ## Supabase Setup
@@ -41,6 +44,16 @@ npm run dev
 ```
 
 브라우저에서 `http://localhost:3000` 접속
+
+## Dev Login (Optional)
+
+OAuth 설정 전 E2E를 위해 개발용 이메일 로그인 UI를 사용할 수 있습니다.
+
+```bash
+NEXT_PUBLIC_ENABLE_DEV_LOGIN=true
+NEXT_PUBLIC_DEV_LOGIN_EMAIL=dev.e2e@example.com
+NEXT_PUBLIC_DEV_LOGIN_PASSWORD=DevLogin123456!
+```
 
 ## Build Check
 
