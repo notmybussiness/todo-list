@@ -10,6 +10,8 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
 ## Current Verification Snapshot
 - [x] `npm run lint` passes (2026-02-14)
 - [x] `npm run build` passes (2026-02-14)
+- [x] `npm run test:unit` passes (2026-02-15)
+- [x] `npm run test:e2e` passes (2026-02-15, local dev-login smoke)
 - [x] Vercel production deployment status is `Ready` (2026-02-14)
 - [x] Production `/` redirects unauthenticated users to `/login` (2026-02-14)
 - [x] Google/Kakao OAuth start redirects are reachable (2026-02-14)
@@ -56,16 +58,27 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
     - `/Users/gyu/Documents/todo_app/e2e/mvp-smoke.spec.ts`
   - Goal: keep MVP gate checks reproducible.
 
-- [x] **P1-3: Enforce Task.md update guard in local/PR flow**
+- [x] **P1-3: Remove hard guard and switch to process checklist**
   - Files:
-    - `/Users/gyu/Documents/todo_app/scripts/require-task-md-update.sh`
-    - `/Users/gyu/Documents/todo_app/.githooks/pre-commit`
-    - `/Users/gyu/Documents/todo_app/.github/workflows/task-md-guard.yml`
-  - Goal: block commits/PRs that skip `Task.md` updates.
+    - `/Users/gyu/Documents/todo_app/.github/pull_request_template.md`
+    - `/Users/gyu/Documents/todo_app/README.md`
+  - Goal: manage `Task.md` sync via PR/review checklist, not commit blocking.
 
 - [ ] **P1-4: Standardize login failure UX copy**
   - File: `/Users/gyu/Documents/todo_app/app/login/page.tsx`
   - Goal: unify provider-specific failure guidance.
+
+- [x] **P1-5: Add unit test layer (Vitest)**
+  - Files:
+    - `/Users/gyu/Documents/todo_app/vitest.config.ts`
+    - `/Users/gyu/Documents/todo_app/tests/unit/sanitize-next-path.test.ts`
+    - `/Users/gyu/Documents/todo_app/tests/unit/todo-validation.test.ts`
+  - Goal: validate auth redirect path sanitation and todo text validation.
+
+- [x] **P1-6: Add CI pipeline for unit/build and E2E smoke**
+  - File:
+    - `/Users/gyu/Documents/todo_app/.github/workflows/ci.yml`
+  - Goal: require `ci-unit-build` and `ci-e2e-smoke` checks before merge.
 
 ## P2 (Backlog)
 - [ ] **P2-1: Extend automated E2E for production callback completion**
@@ -76,6 +89,7 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
 
 ## Manual Run Log
 - 2026-02-14: baseline checks completed (lint/build/deploy ready/redirect/OAuth start/local dev-login CRUD).
-- 2026-02-14: task/commit discipline guard added (local pre-commit + PR CI).
+- 2026-02-14: task hard-guard removed, PR/review checklist process adopted.
 - 2026-02-14: production redeployed (`dpl_D3XuDU2DQ5fLUFgRc1JevcvntFJH`, alias `todoapp-seven-taupe-34.vercel.app`).
 - 2026-02-14: production E2E smoke on deployed URL passed (`1 passed / 2 skipped` with `E2E_USE_DEV_LOGIN=false`).
+- 2026-02-15: unit test layer(vitest) + CI workflow(`ci-unit-build`, `ci-e2e-smoke`) added and local verification passed.

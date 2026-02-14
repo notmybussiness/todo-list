@@ -60,6 +60,7 @@ NEXT_PUBLIC_DEV_LOGIN_PASSWORD=DevLogin123456!
 ```bash
 npm run lint
 npm run build
+npm run test:unit
 ```
 
 ## E2E Smoke (Playwright)
@@ -82,35 +83,45 @@ npm run test:e2e
 - `playwright-report/`
 - `test-results/`
 
-## Task Rule Enforcement
+## CI (GitHub Actions)
 
-작업 단위로 `Task.md`를 최신화하고 커밋하도록 가드를 추가했습니다.
+워크플로: `/Users/gyu/Documents/todo_app/.github/workflows/ci.yml`
 
-로컬 훅 설치:
+체크 이름:
+- `ci-unit-build`
+- `ci-e2e-smoke`
 
-```bash
-npm run hooks:install
-```
+필수 시크릿:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_DEV_LOGIN_EMAIL`
+- `NEXT_PUBLIC_DEV_LOGIN_PASSWORD`
 
-동작:
-- `Task.md` 외 파일이 스테이징된 상태에서 `Task.md`가 함께 스테이징되지 않으면 커밋 차단
-- PR에서도 `Task.md` 미수정 시 CI(`task-md-guard`) 실패
+권장 Branch Protection (`main`):
+- Require pull request before merging
+- Require status checks to pass:
+  - `ci-unit-build`
+  - `ci-e2e-smoke`
+- Restrict direct pushes
 
-## Deploy (Vercel)
+## CD (Vercel Git Integration)
 
-### Preview
+Vercel 프로젝트 설정:
+1. GitHub 저장소 연결
+2. Production Branch를 `main`으로 설정
+3. Auto Deploy(Production) 활성화
+4. Preview Deploy(PR) 활성화
 
-```bash
-vercel deploy -y
-```
+Vercel 환경변수:
+- Development/Preview/Production 모두 Supabase URL/Publishable Key 설정
+- Production은 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=false`
+- Preview는 내부 테스트 목적일 때만 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`
 
-### Production
-
-```bash
-vercel deploy --prod -y
-```
-
-배포 전에 Vercel 프로젝트 환경변수(Development/Preview/Production)에 동일한 Supabase 값을 설정하세요.
+운영 흐름:
+1. PR 생성 → GitHub CI + Vercel Preview 자동 실행
+2. CI 통과 후 리뷰/머지
+3. `main` 머지 시 Vercel Production 자동 배포
 
 ## Priority Board
 
