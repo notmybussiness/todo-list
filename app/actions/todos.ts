@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { MAX_TODO_LENGTH } from "@/lib/constants";
+import { validateCreateTodoText, validateUpdateTodoText } from "@/lib/todos/validation";
 import type { ActionResult } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +16,7 @@ function parseId(rawId: FormDataEntryValue | null): string | null {
 }
 
 function parseText(rawText: FormDataEntryValue | null): string {
-  return typeof rawText === "string" ? rawText.trim() : "";
+  return typeof rawText === "string" ? rawText : "";
 }
 
 async function getAuthContext() {
@@ -33,18 +33,15 @@ async function getAuthContext() {
 }
 
 export async function createTodo(formData: FormData): Promise<ActionResult> {
-  const text = parseText(formData.get("text"));
-  if (!text) {
-    return { ok: false, message: "할 일을 입력해주세요." };
-  }
-  if (text.length > MAX_TODO_LENGTH) {
-    return { ok: false, message: `할 일은 ${MAX_TODO_LENGTH}자를 초과할 수 없습니다.` };
+  const validation = validateCreateTodoText(parseText(formData.get("text")));
+  if (!validation.ok) {
+    return { ok: false, message: validation.message };
   }
 
   const { supabase, user } = await getAuthContext();
   const { error } = await supabase.from("todos").insert({
     user_id: user.id,
-    text,
+    text: validation.text,
     completed: false
   });
 
@@ -58,19 +55,19 @@ export async function createTodo(formData: FormData): Promise<ActionResult> {
 
 export async function updateTodo(formData: FormData): Promise<ActionResult> {
   const id = parseId(formData.get("id"));
-  const text = parseText(formData.get("text"));
+  const validation = validateUpdateTodoText(parseText(formData.get("text")));
 
   if (!id) {
     return { ok: false, message: "수정할 항목을 찾을 수 없습니다." };
   }
-  if (!text || text.length > MAX_TODO_LENGTH) {
-    return { ok: false, message: "수정 내용은 공백일 수 없고 200자 이하여야 합니다." };
+  if (!validation.ok) {
+    return { ok: false, message: validation.message };
   }
 
   const { supabase, user } = await getAuthContext();
   const { data, error } = await supabase
     .from("todos")
-    .update({ text })
+    .update({ text: validation.text })
     .eq("id", id)
     .eq("user_id", user.id)
     .select("id")

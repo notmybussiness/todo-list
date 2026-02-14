@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { createTodo, deleteTodo, toggleTodo, updateTodo } from "@/app/actions/todos";
-import { FILTERS, MAX_TODO_LENGTH } from "@/lib/constants";
+import { FILTERS } from "@/lib/constants";
+import { validateCreateTodoText, validateUpdateTodoText } from "@/lib/todos/validation";
 import type { ActionResult, Filter, Todo } from "@/lib/types";
 
 type TodoAppProps = {
@@ -71,18 +72,14 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   const handleCreateTodo = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedText = todoText.trim();
-    if (!trimmedText) {
-      setFormMessage("할 일을 입력해주세요.");
-      return;
-    }
-    if (trimmedText.length > MAX_TODO_LENGTH) {
-      setFormMessage(`할 일은 ${MAX_TODO_LENGTH}자를 초과할 수 없습니다.`);
+    const validation = validateCreateTodoText(todoText);
+    if (!validation.ok) {
+      setFormMessage(validation.message);
       return;
     }
 
     const formData = new FormData();
-    formData.set("text", trimmedText);
+    formData.set("text", validation.text);
 
     runAction(createTodo, formData, () => {
       setTodoText("");
@@ -124,15 +121,15 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   };
 
   const saveEditing = (id: string) => {
-    const trimmedText = editingText.trim();
-    if (!trimmedText || trimmedText.length > MAX_TODO_LENGTH) {
-      setFormMessage("수정 내용은 공백일 수 없고 200자 이하여야 합니다.");
+    const validation = validateUpdateTodoText(editingText);
+    if (!validation.ok) {
+      setFormMessage(validation.message);
       return;
     }
 
     const formData = new FormData();
     formData.set("id", id);
-    formData.set("text", trimmedText);
+    formData.set("text", validation.text);
 
     runAction(updateTodo, formData, () => {
       setEditingId(null);

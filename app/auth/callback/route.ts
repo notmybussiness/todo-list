@@ -1,18 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { sanitizeNextPath } from "@/lib/auth/sanitize-next-path";
 import { createClient } from "@/lib/supabase/server";
-
-function sanitizeNextPath(rawPath: string | null): string {
-  if (!rawPath || !rawPath.startsWith("/")) {
-    return "/";
-  }
-
-  if (rawPath.startsWith("//")) {
-    return "/";
-  }
-
-  return rawPath;
-}
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

@@ -1,22 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { sanitizeNextPath } from "@/lib/auth/sanitize-next-path";
 import { OAUTH_PROVIDERS, type OAuthProviderName } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 function isProvider(value: string): value is OAuthProviderName {
   return (OAUTH_PROVIDERS as readonly string[]).includes(value);
-}
-
-function sanitizeNextPath(rawPath: string | null): string {
-  if (!rawPath || !rawPath.startsWith("/")) {
-    return "/";
-  }
-
-  if (rawPath.startsWith("//")) {
-    return "/";
-  }
-
-  return rawPath;
 }
 
 export async function GET(request: NextRequest) {
