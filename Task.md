@@ -48,9 +48,12 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
     - user A's todos are not visible to user B, and vice versa.
 
 ## P1 (Post-MVP Early)
-- [ ] **P1-1: Kakao scope duplication cleanup**
+- [x] **P1-1: Kakao scope duplication cleanup**
   - File: `/Users/gyu/Documents/todo_app/app/auth/login/route.ts`
   - Goal: remove duplicated Kakao scopes in authorize URL.
+  - Status:
+    - custom Kakao scopes override removed from route options.
+    - provider scopes are now managed in Supabase provider settings only.
 
 - [x] **P1-2: Add Playwright smoke test entry**
   - Files:
@@ -80,6 +83,11 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
     - `/Users/gyu/Documents/todo_app/.github/workflows/ci.yml`
   - Goal: require `ci-unit-build` and `ci-e2e-smoke` checks before merge.
 
+- [x] **P1-7: Improve Todo UX latency with optimistic UI updates**
+  - File:
+    - `/Users/gyu/Documents/todo_app/app/components/todo-app.tsx`
+  - Goal: apply create/toggle/update/delete immediately on client and rollback on failure.
+
 ## P2 (Backlog)
 - [ ] **P2-1: Extend automated E2E for production callback completion**
   - Goal: add safe test harness strategy for external IdP callback verification.
@@ -93,3 +101,4 @@ Owner Branch: `codex/nextjs-supabase-vercel-migration`
 - 2026-02-14: production redeployed (`dpl_D3XuDU2DQ5fLUFgRc1JevcvntFJH`, alias `todoapp-seven-taupe-34.vercel.app`).
 - 2026-02-14: production E2E smoke on deployed URL passed (`1 passed / 2 skipped` with `E2E_USE_DEV_LOGIN=false`).
 - 2026-02-15: unit test layer(vitest) + CI workflow(`ci-unit-build`, `ci-e2e-smoke`) added and local verification passed.
+- 2026-02-15: removed Kakao scope override in route and added optimistic todo UI updates (create/toggle/update/delete).

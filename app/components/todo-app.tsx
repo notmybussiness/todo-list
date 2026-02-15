@@ -17,6 +17,7 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [todoText, setTodoText] = useState("");
   const [formMessage, setFormMessage] = useState(initialMessage);
   const [currentFilter, setCurrentFilter] = useState<Filter>("all");
@@ -33,37 +34,50 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
     }
   }, [editingId]);
 
-  const counts = useMemo(() => {
-    const total = initialTodos.length;
-    const completed = initialTodos.filter((todo) => todo.completed).length;
-    return { total, completed, active: total - completed };
+  useEffect(() => {
+    setTodos(initialTodos);
   }, [initialTodos]);
+
+  const counts = useMemo(() => {
+    const total = todos.length;
+    const completed = todos.filter((todo) => todo.completed).length;
+    return { total, completed, active: total - completed };
+  }, [todos]);
 
   const filteredTodos = useMemo(() => {
     if (currentFilter === "active") {
-      return initialTodos.filter((todo) => !todo.completed);
+      return todos.filter((todo) => !todo.completed);
     }
     if (currentFilter === "completed") {
-      return initialTodos.filter((todo) => todo.completed);
+      return todos.filter((todo) => todo.completed);
     }
-    return initialTodos;
-  }, [currentFilter, initialTodos]);
+    return todos;
+  }, [currentFilter, todos]);
 
   const runAction = (
     action: (formData: FormData) => Promise<ActionResult>,
     formData: FormData,
-    onSuccess?: () => void
+    options?: {
+      optimisticUpdate?: () => void;
+      rollback?: () => void;
+      onSuccess?: () => void;
+    }
   ) => {
+    options?.optimisticUpdate?.();
+
     startTransition(async () => {
       try {
         const result = await action(formData);
         setFormMessage(result.message);
 
         if (result.ok) {
-          onSuccess?.();
+          options?.onSuccess?.();
           router.refresh();
+        } else {
+          options?.rollback?.();
         }
       } catch {
+        options?.rollback?.();
         setFormMessage("요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
       }
     });
@@ -80,10 +94,26 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
 
     const formData = new FormData();
     formData.set("text", validation.text);
+    const previousTodos = [...todos];
+    const optimisticTodo: Todo = {
+      id: `temp-${Date.now()}`,
+      text: validation.text,
+      completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
 
-    runAction(createTodo, formData, () => {
-      setTodoText("");
-      todoInputRef.current?.focus();
+    runAction(createTodo, formData, {
+      optimisticUpdate: () => {
+        setTodos((prev) => [optimisticTodo, ...prev]);
+        setTodoText("");
+        setFormMessage("");
+        todoInputRef.current?.focus();
+      },
+      rollback: () => {
+        setTodos(previousTodos);
+        setTodoText(validation.text);
+      }
     });
   };
 
@@ -91,18 +121,39 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
     const formData = new FormData();
     formData.set("id", todo.id);
     formData.set("completed", String(!todo.completed));
+    const previousTodos = [...todos];
 
-    runAction(toggleTodo, formData);
+    runAction(toggleTodo, formData, {
+      optimisticUpdate: () => {
+        setTodos((prev) =>
+          prev.map((item) =>
+            item.id === todo.id
+              ? { ...item, completed: !item.completed, updated_at: new Date().toISOString() }
+              : item
+          )
+        );
+      },
+      rollback: () => {
+        setTodos(previousTodos);
+      }
+    });
   };
 
   const handleDeleteTodo = (id: string) => {
     const formData = new FormData();
     formData.set("id", id);
+    const previousTodos = [...todos];
 
-    runAction(deleteTodo, formData, () => {
-      if (editingId === id) {
-        setEditingId(null);
-        setEditingText("");
+    runAction(deleteTodo, formData, {
+      optimisticUpdate: () => {
+        setTodos((prev) => prev.filter((todo) => todo.id !== id));
+        if (editingId === id) {
+          setEditingId(null);
+          setEditingText("");
+        }
+      },
+      rollback: () => {
+        setTodos(previousTodos);
       }
     });
   };
@@ -130,11 +181,25 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
     const formData = new FormData();
     formData.set("id", id);
     formData.set("text", validation.text);
+    const previousTodos = [...todos];
 
-    runAction(updateTodo, formData, () => {
-      setEditingId(null);
-      setEditingText("");
-      todoInputRef.current?.focus();
+    runAction(updateTodo, formData, {
+      optimisticUpdate: () => {
+        setTodos((prev) =>
+          prev.map((todo) =>
+            todo.id === id ? { ...todo, text: validation.text, updated_at: new Date().toISOString() } : todo
+          )
+        );
+        setEditingId(null);
+        setEditingText("");
+        setFormMessage("");
+        todoInputRef.current?.focus();
+      },
+      rollback: () => {
+        setTodos(previousTodos);
+        setEditingId(id);
+        setEditingText(validation.text);
+      }
     });
   };
 
@@ -194,7 +259,7 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
 
       {filteredTodos.length === 0 ? (
         <p id="empty-state" className="empty-state" role="status" aria-live="polite">
-          {initialTodos.length === 0
+          {todos.length === 0
             ? "아직 등록된 할 일이 없습니다."
             : "선택한 필터에 해당하는 할 일이 없습니다."}
         </p>

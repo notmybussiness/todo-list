@@ -22,8 +22,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo,
-      ...(provider === "kakao" ? { scopes: "account_email profile_nickname profile_image" } : {})
+      redirectTo
     }
   });
 
