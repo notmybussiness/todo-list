@@ -63,6 +63,19 @@ npm run build
 npm run test:unit
 ```
 
+## Why Todo Feels Faster Now
+
+최근 Todo 조작이 빨라진 이유는 DB 캐시가 아니라 **Optimistic UI** 적용입니다.
+
+- 적용 파일: `/Users/gyu/Documents/todo_app/app/components/todo-app.tsx`
+- 동작 방식:
+  - 생성/수정/토글/삭제를 클릭하면 UI를 먼저 즉시 반영
+  - 그 다음 Server Action으로 Supabase에 반영
+  - 서버 요청 실패 시 이전 상태로 rollback
+  - 성공 시 `router.refresh()`로 서버 상태와 재동기화
+
+즉, 체감 속도는 빨라지지만 데이터 정합성은 서버 응답으로 최종 확정됩니다.
+
 ## E2E Smoke (Playwright)
 
 `Task.md` 기준 MVP 게이트를 반복 검증하기 위한 스모크 테스트입니다.
@@ -122,6 +135,23 @@ Vercel 환경변수:
 1. PR 생성 → GitHub CI + Vercel Preview 자동 실행
 2. CI 통과 후 리뷰/머지
 3. `main` 머지 시 Vercel Production 자동 배포
+
+## Kakao OAuth Troubleshooting (KOE205)
+
+`잘못된 요청 (KOE205)`는 대부분 요청 scope와 Kakao 동의항목 설정 불일치입니다.
+
+확인 순서:
+1. Kakao Developers > 제품 설정 > 카카오 로그인 > 동의항목
+   - `profile_nickname`
+   - `profile_image`
+   - `account_email`
+2. Kakao Developers > 제품 설정 > 카카오 로그인 > Redirect URI
+   - `https://xqvtthxjnbachqwuslnx.supabase.co/auth/v1/callback`
+3. Kakao Developers > 앱 설정 > 플랫폼 > Web
+   - `https://todoapp-seven-taupe-34.vercel.app`
+4. Supabase > Authentication > Providers > Kakao
+   - Client ID가 Kakao REST API 키인지 확인
+   - 필요 시 Save 재실행
 
 ## Priority Board
 
