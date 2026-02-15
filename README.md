@@ -1,158 +1,21 @@
-# Next.js Todo App (Supabase OAuth)
+# Next.js Todo App
 
-Next.js(App Router + TypeScript) 기반 TODO 앱입니다.
-Google/Kakao OAuth 로그인 후 사용자별 TODO를 분리 관리합니다.
+## 앱 소개
+Google / Kakao OAuth 로그인 기반의 개인 Todo 앱입니다.  
+사용자마다 할 일이 분리되어 저장되며, 추가/수정/삭제/필터 기능을 제공합니다.
 
-## Stack
-
+## 사용 기술
 - Next.js 14 (App Router)
 - TypeScript
 - Supabase Auth + Postgres + RLS
 - Vercel
+- Playwright (E2E)
+- Vitest (Unit)
 
-## Environment Variables
-
-`.env.local` 파일에 아래 값을 설정하세요.
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
-NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
-NEXT_PUBLIC_ENABLE_DEV_LOGIN=false # Production must stay false
-NEXT_PUBLIC_DEV_LOGIN_EMAIL=dev.e2e@example.com
-NEXT_PUBLIC_DEV_LOGIN_PASSWORD=DevLogin#123456
-```
-
-## Supabase Setup
-
-1. Supabase 프로젝트 생성
-2. SQL Editor에서 `/Users/gyu/Documents/todo_app/supabase/migrations/20260214193000_create_todos.sql` 실행
-3. Authentication > Providers에서 Google, Kakao 활성화
-4. Authentication > URL Configuration 설정
-
-- Site URL: Production 도메인
-- Redirect URLs:
-  - `http://localhost:3000/**`
-  - `https://*-<team-or-account-slug>.vercel.app/**`
-  - `https://<your-production-domain>/**`
-
-## Run Local
-
-```bash
-npm install
-npm run dev
-```
-
-브라우저에서 `http://localhost:3000` 접속
-
-## Dev Login (Optional)
-
-OAuth 설정 전 E2E를 위해 개발용 이메일 로그인 UI를 사용할 수 있습니다.
-
-```bash
-NEXT_PUBLIC_ENABLE_DEV_LOGIN=true
-NEXT_PUBLIC_DEV_LOGIN_EMAIL=dev.e2e@example.com
-NEXT_PUBLIC_DEV_LOGIN_PASSWORD=DevLogin123456!
-```
-
-## Build Check
-
-```bash
-npm run lint
-npm run build
-npm run test:unit
-```
-
-## Why Todo Feels Faster Now
-
-최근 Todo 조작이 빨라진 이유는 DB 캐시가 아니라 **Optimistic UI** 적용입니다.
-
-- 적용 파일: `/Users/gyu/Documents/todo_app/app/components/todo-app.tsx`
-- 동작 방식:
-  - 생성/수정/토글/삭제를 클릭하면 UI를 먼저 즉시 반영
-  - 그 다음 Server Action으로 Supabase에 반영
-  - 서버 요청 실패 시 이전 상태로 rollback
-  - 성공 시 `router.refresh()`로 서버 상태와 재동기화
-
-즉, 체감 속도는 빨라지지만 데이터 정합성은 서버 응답으로 최종 확정됩니다.
-
-## E2E Smoke (Playwright)
-
-`Task.md` 기준 MVP 게이트를 반복 검증하기 위한 스모크 테스트입니다.
-
-```bash
-npx playwright install chromium
-npm run test:e2e
-```
-
-기본 실행은 로컬 `http://127.0.0.1:3001` 서버를 자동 기동합니다.
-
-- 배포 URL 대상으로 리다이렉트만 점검:
-  - `E2E_BASE_URL=https://your-domain.vercel.app E2E_USE_DEV_LOGIN=false npm run test:e2e`
-- 로컬 dev-login 포함 전체 CRUD 스모크:
-  - `npm run test:e2e`
-
-리포트 위치:
-- `playwright-report/`
-- `test-results/`
-
-## CI (GitHub Actions)
-
-워크플로: `/Users/gyu/Documents/todo_app/.github/workflows/ci.yml`
-
-체크 이름:
-- `ci-unit-build`
-- `ci-e2e-smoke`
-
-필수 시크릿:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_DEV_LOGIN_EMAIL`
-- `NEXT_PUBLIC_DEV_LOGIN_PASSWORD`
-
-권장 Branch Protection (`main`):
-- Require pull request before merging
-- Require status checks to pass:
-  - `ci-unit-build`
-  - `ci-e2e-smoke`
-- Restrict direct pushes
-
-## CD (Vercel Git Integration)
-
-Vercel 프로젝트 설정:
-1. GitHub 저장소 연결
-2. Production Branch를 `main`으로 설정
-3. Auto Deploy(Production) 활성화
-4. Preview Deploy(PR) 활성화
-
-Vercel 환경변수:
-- Development/Preview/Production 모두 Supabase URL/Publishable Key 설정
-- Production은 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=false`
-- Preview는 내부 테스트 목적일 때만 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`
-
-운영 흐름:
-1. PR 생성 → GitHub CI + Vercel Preview 자동 실행
-2. CI 통과 후 리뷰/머지
-3. `main` 머지 시 Vercel Production 자동 배포
-
-## Kakao OAuth Troubleshooting (KOE205)
-
-`잘못된 요청 (KOE205)`는 대부분 요청 scope와 Kakao 동의항목 설정 불일치입니다.
-
-확인 순서:
-1. Kakao Developers > 제품 설정 > 카카오 로그인 > 동의항목
-   - `profile_nickname`
-   - `profile_image`
-   - `account_email`
-2. Kakao Developers > 제품 설정 > 카카오 로그인 > Redirect URI
-   - `https://xqvtthxjnbachqwuslnx.supabase.co/auth/v1/callback`
-3. Kakao Developers > 앱 설정 > 플랫폼 > Web
-   - `https://todoapp-seven-taupe-34.vercel.app`
-4. Supabase > Authentication > Providers > Kakao
-   - Client ID가 Kakao REST API 키인지 확인
-   - 필요 시 Save 재실행
-
-## Priority Board
-
-MVP 우선순위와 릴리스 게이트의 단일 원본은 `/Users/gyu/Documents/todo_app/Task.md`입니다.
+## 문제 해결
+- 사용자별 데이터 분리:
+  - Supabase RLS 정책으로 `auth.uid() = user_id` 데이터만 조회/수정 가능하게 구성
+- 로그인/세션 처리:
+  - Supabase SSR + OAuth 콜백 라우트로 Google/Kakao 로그인 흐름 구성
+- 체감 속도 개선:
+  - Todo 생성/수정/토글/삭제에 Optimistic UI 적용 (즉시 반영 후 실패 시 롤백)
