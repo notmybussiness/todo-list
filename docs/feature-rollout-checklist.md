@@ -31,7 +31,7 @@
   - `/api/cron/reminders` 배치 엔드포인트 추가
   - `due_at <= now` 및 `reminder_sent_at is null` 조건으로 대상 조회
   - SMTP 발송 성공 시 `reminder_sent_at` 업데이트
-  - Vercel Cron 스케줄(`vercel.json`) 추가
+  - Vercel Cron 스케줄(`vercel.json`, free tier 대응 하루 1회) 추가
 - 통과 기준
   - 로컬/배포에서 크론 엔드포인트 인증(`CRON_SECRET`) 동작
   - 환경변수 누락 시 명확한 실패 메시지 반환

@@ -17,7 +17,7 @@
 - `SMTP_FROM_NAME` (optional)
 
 ## 3) Cron 호출 경로
-- `vercel.json`에 `/api/cron/reminders`가 30분 간격으로 등록되어 있습니다.
+- `vercel.json`에 `/api/cron/reminders`가 **하루 1회(매일 09:00 UTC)** 로 등록되어 있습니다.
 - 배포 후 Vercel Cron이 자동 호출합니다.
 
 ## 4) 수동 점검
