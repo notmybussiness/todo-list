@@ -3,9 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { validateCreateTodoText, validateUpdateTodoText } from "@/lib/todos/validation";
+import { validateCreateTodoInput, validateUpdateTodoInput } from "@/lib/todos/validation";
 import type { ActionResult } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+
+function isTodoDetailsSchemaError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const reason = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  return (
+    reason.includes("pgrst204") ||
+    reason.includes("42703") ||
+    reason.includes("note") ||
+    reason.includes("start_at") ||
+    reason.includes("due_at")
+  );
+}
 
 function parseId(rawId: FormDataEntryValue | null): string | null {
   if (typeof rawId !== "string") {
@@ -33,17 +48,35 @@ async function getAuthContext() {
 }
 
 export async function createTodo(formData: FormData): Promise<ActionResult> {
-  const validation = validateCreateTodoText(parseText(formData.get("text")));
+  const validation = validateCreateTodoInput({
+    text: parseText(formData.get("text")),
+    note: parseText(formData.get("note")),
+    startAt: parseText(formData.get("startAt")),
+    dueAt: parseText(formData.get("dueAt"))
+  });
   if (!validation.ok) {
     return { ok: false, message: validation.message };
   }
 
   const { supabase, user } = await getAuthContext();
-  const { error } = await supabase.from("todos").insert({
+  const { text, note, startAt, dueAt } = validation.data;
+  let { error } = await supabase.from("todos").insert({
     user_id: user.id,
-    text: validation.text,
+    text,
+    note,
+    start_at: startAt,
+    due_at: dueAt,
     completed: false
   });
+
+  if (error && isTodoDetailsSchemaError(error)) {
+    const fallback = await supabase.from("todos").insert({
+      user_id: user.id,
+      text,
+      completed: false
+    });
+    error = fallback.error;
+  }
 
   if (error) {
     return { ok: false, message: "할 일을 저장하지 못했습니다. 잠시 후 다시 시도해주세요." };
@@ -55,7 +88,12 @@ export async function createTodo(formData: FormData): Promise<ActionResult> {
 
 export async function updateTodo(formData: FormData): Promise<ActionResult> {
   const id = parseId(formData.get("id"));
-  const validation = validateUpdateTodoText(parseText(formData.get("text")));
+  const validation = validateUpdateTodoInput({
+    text: parseText(formData.get("text")),
+    note: parseText(formData.get("note")),
+    startAt: parseText(formData.get("startAt")),
+    dueAt: parseText(formData.get("dueAt"))
+  });
 
   if (!id) {
     return { ok: false, message: "수정할 항목을 찾을 수 없습니다." };
@@ -65,13 +103,31 @@ export async function updateTodo(formData: FormData): Promise<ActionResult> {
   }
 
   const { supabase, user } = await getAuthContext();
-  const { data, error } = await supabase
+  const { text, note, startAt, dueAt } = validation.data;
+  let { data, error } = await supabase
     .from("todos")
-    .update({ text: validation.text })
+    .update({
+      text,
+      note,
+      start_at: startAt,
+      due_at: dueAt
+    })
     .eq("id", id)
     .eq("user_id", user.id)
     .select("id")
     .maybeSingle();
+
+  if (error && isTodoDetailsSchemaError(error)) {
+    const fallback = await supabase
+      .from("todos")
+      .update({ text })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("id")
+      .maybeSingle();
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data) {
     return { ok: false, message: "수정할 항목을 찾을 수 없습니다." };

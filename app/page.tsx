@@ -5,6 +5,21 @@ import { TodoApp } from "@/app/components/todo-app";
 import type { Todo } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 
+function isTodoDetailsSchemaError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const reason = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  return (
+    reason.includes("pgrst204") ||
+    reason.includes("42703") ||
+    reason.includes("note") ||
+    reason.includes("start_at") ||
+    reason.includes("due_at")
+  );
+}
+
 export default async function HomePage() {
   const supabase = createClient();
   const {
@@ -15,10 +30,25 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("todos")
-    .select("id, text, completed, created_at, updated_at")
+    .select("id, text, note, start_at, due_at, completed, created_at, updated_at")
     .order("created_at", { ascending: false });
+
+  if (error && isTodoDetailsSchemaError(error)) {
+    const fallback = await supabase
+      .from("todos")
+      .select("id, text, completed, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    data = (fallback.data ?? []).map((todo) => ({
+      ...todo,
+      note: null,
+      start_at: null,
+      due_at: null
+    }));
+    error = fallback.error;
+  }
 
   return (
     <main className="app-shell">

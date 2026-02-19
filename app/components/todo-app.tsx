@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { createTodo, deleteTodo, toggleTodo, updateTodo } from "@/app/actions/todos";
-import { FILTERS } from "@/lib/constants";
-import { validateCreateTodoText, validateUpdateTodoText } from "@/lib/todos/validation";
+import { FILTERS, MAX_TODO_NOTE_LENGTH } from "@/lib/constants";
+import { validateCreateTodoInput, validateUpdateTodoInput } from "@/lib/todos/validation";
 import type { ActionResult, Filter, Todo } from "@/lib/types";
 
 type TodoAppProps = {
@@ -13,26 +13,68 @@ type TodoAppProps = {
   initialMessage?: string;
 };
 
+function toDateTimeLocalValue(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  const offsetInMs = parsed.getTimezoneOffset() * 60_000;
+  return new Date(parsed.getTime() - offsetInMs).toISOString().slice(0, 16);
+}
+
+function formatDateTime(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(parsed);
+}
+
+function formatPeriodLabel(todo: Todo): string | null {
+  const start = formatDateTime(todo.start_at);
+  const due = formatDateTime(todo.due_at);
+
+  if (!start || !due) {
+    return null;
+  }
+
+  return `기간 ${start} ~ ${due}`;
+}
+
 export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
-  const [todoText, setTodoText] = useState("");
+  const [todoTitle, setTodoTitle] = useState("");
+  const [todoNote, setTodoNote] = useState("");
+  const [todoStartAt, setTodoStartAt] = useState("");
+  const [todoDueAt, setTodoDueAt] = useState("");
+  const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const [formMessage, setFormMessage] = useState(initialMessage);
   const [currentFilter, setCurrentFilter] = useState<Filter>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingNote, setEditingNote] = useState("");
+  const [editingStartAt, setEditingStartAt] = useState("");
+  const [editingDueAt, setEditingDueAt] = useState("");
 
   const todoInputRef = useRef<HTMLInputElement>(null);
-  const editingInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editingId && editingInputRef.current) {
-      editingInputRef.current.focus();
-      editingInputRef.current.select();
-    }
-  }, [editingId]);
 
   useEffect(() => {
     setTodos(initialTodos);
@@ -86,18 +128,31 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
   const handleCreateTodo = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validation = validateCreateTodoText(todoText);
+    const validation = validateCreateTodoInput({
+      text: todoTitle,
+      note: todoNote,
+      startAt: todoStartAt,
+      dueAt: todoDueAt
+    });
     if (!validation.ok) {
       setFormMessage(validation.message);
       return;
     }
 
     const formData = new FormData();
-    formData.set("text", validation.text);
+    formData.set("text", validation.data.text);
+    formData.set("note", validation.data.note ?? "");
+    formData.set("startAt", todoStartAt);
+    formData.set("dueAt", todoDueAt);
     const previousTodos = [...todos];
+    const previousFileNames = [...selectedFileNames];
+
     const optimisticTodo: Todo = {
       id: `temp-${Date.now()}`,
-      text: validation.text,
+      text: validation.data.text,
+      note: validation.data.note,
+      start_at: validation.data.startAt,
+      due_at: validation.data.dueAt,
       completed: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -106,13 +161,21 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
     runAction(createTodo, formData, {
       optimisticUpdate: () => {
         setTodos((prev) => [optimisticTodo, ...prev]);
-        setTodoText("");
+        setTodoTitle("");
+        setTodoNote("");
+        setTodoStartAt("");
+        setTodoDueAt("");
+        setSelectedFileNames([]);
         setFormMessage("");
         todoInputRef.current?.focus();
       },
       rollback: () => {
         setTodos(previousTodos);
-        setTodoText(validation.text);
+        setTodoTitle(validation.data.text);
+        setTodoNote(validation.data.note ?? "");
+        setTodoStartAt(toDateTimeLocalValue(validation.data.startAt));
+        setTodoDueAt(toDateTimeLocalValue(validation.data.dueAt));
+        setSelectedFileNames(previousFileNames);
       }
     });
   };
@@ -149,7 +212,10 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
         setTodos((prev) => prev.filter((todo) => todo.id !== id));
         if (editingId === id) {
           setEditingId(null);
-          setEditingText("");
+          setEditingTitle("");
+          setEditingNote("");
+          setEditingStartAt("");
+          setEditingDueAt("");
         }
       },
       rollback: () => {
@@ -160,19 +226,30 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
 
   const startEditing = (todo: Todo) => {
     setEditingId(todo.id);
-    setEditingText(todo.text);
+    setEditingTitle(todo.text);
+    setEditingNote(todo.note ?? "");
+    setEditingStartAt(toDateTimeLocalValue(todo.start_at));
+    setEditingDueAt(toDateTimeLocalValue(todo.due_at));
     setFormMessage("");
   };
 
   const cancelEditing = () => {
     setEditingId(null);
-    setEditingText("");
+    setEditingTitle("");
+    setEditingNote("");
+    setEditingStartAt("");
+    setEditingDueAt("");
     setFormMessage("");
     todoInputRef.current?.focus();
   };
 
   const saveEditing = (id: string) => {
-    const validation = validateUpdateTodoText(editingText);
+    const validation = validateUpdateTodoInput({
+      text: editingTitle,
+      note: editingNote,
+      startAt: editingStartAt,
+      dueAt: editingDueAt
+    });
     if (!validation.ok) {
       setFormMessage(validation.message);
       return;
@@ -180,51 +257,137 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
 
     const formData = new FormData();
     formData.set("id", id);
-    formData.set("text", validation.text);
+    formData.set("text", validation.data.text);
+    formData.set("note", validation.data.note ?? "");
+    formData.set("startAt", editingStartAt);
+    formData.set("dueAt", editingDueAt);
     const previousTodos = [...todos];
 
     runAction(updateTodo, formData, {
       optimisticUpdate: () => {
         setTodos((prev) =>
           prev.map((todo) =>
-            todo.id === id ? { ...todo, text: validation.text, updated_at: new Date().toISOString() } : todo
+            todo.id === id
+              ? {
+                  ...todo,
+                  text: validation.data.text,
+                  note: validation.data.note,
+                  start_at: validation.data.startAt,
+                  due_at: validation.data.dueAt,
+                  updated_at: new Date().toISOString()
+                }
+              : todo
           )
         );
         setEditingId(null);
-        setEditingText("");
+        setEditingTitle("");
+        setEditingNote("");
+        setEditingStartAt("");
+        setEditingDueAt("");
         setFormMessage("");
         todoInputRef.current?.focus();
       },
       rollback: () => {
         setTodos(previousTodos);
         setEditingId(id);
-        setEditingText(validation.text);
+        setEditingTitle(validation.data.text);
+        setEditingNote(validation.data.note ?? "");
+        setEditingStartAt(toDateTimeLocalValue(validation.data.startAt));
+        setEditingDueAt(toDateTimeLocalValue(validation.data.dueAt));
       }
     });
   };
 
+  const handleFilesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const names = Array.from(event.target.files ?? []).map((file) => file.name);
+    setSelectedFileNames(names);
+  };
+
   return (
     <>
-      <form id="todo-form" className="todo-form" autoComplete="off" onSubmit={handleCreateTodo}>
-        <label className="sr-only" htmlFor="todo-input">
-          할 일 입력
-        </label>
-        <input
-          id="todo-input"
-          ref={todoInputRef}
-          name="todo"
-          type="text"
-          placeholder="할 일을 입력하세요 (최대 200자)"
-          required
-          value={todoText}
-          onChange={(event) => {
-            setTodoText(event.target.value);
-            setFormMessage("");
-          }}
-        />
-        <button type="submit" disabled={isPending}>
-          추가
-        </button>
+      <form id="todo-form" className="todo-form todo-form-enhanced" autoComplete="off" onSubmit={handleCreateTodo}>
+        <div className="todo-form-main-row">
+          <label className="sr-only" htmlFor="todo-input">
+            할 일 제목 입력
+          </label>
+          <input
+            id="todo-input"
+            ref={todoInputRef}
+            name="todo"
+            type="text"
+            placeholder="할 일 제목을 입력하세요 (최대 200자)"
+            required
+            value={todoTitle}
+            onChange={(event) => {
+              setTodoTitle(event.target.value);
+              setFormMessage("");
+            }}
+          />
+
+          <div className="period-input-group">
+            <label className="sr-only" htmlFor="todo-start-at">
+              시작일
+            </label>
+            <input
+              id="todo-start-at"
+              className="due-input"
+              type="datetime-local"
+              value={todoStartAt}
+              onChange={(event) => {
+                setTodoStartAt(event.target.value);
+                setFormMessage("");
+              }}
+            />
+            <span className="period-separator">~</span>
+            <label className="sr-only" htmlFor="todo-due-at">
+              마감일
+            </label>
+            <input
+              id="todo-due-at"
+              className="due-input"
+              type="datetime-local"
+              value={todoDueAt}
+              onChange={(event) => {
+                setTodoDueAt(event.target.value);
+                setFormMessage("");
+              }}
+            />
+          </div>
+
+          <button type="submit" disabled={isPending}>
+            추가
+          </button>
+        </div>
+
+        <div className="todo-form-detail">
+          <label className="todo-detail-label" htmlFor="todo-note">
+            메모
+          </label>
+          <textarea
+            id="todo-note"
+            className="todo-note-input"
+            rows={3}
+            placeholder={`할 일 상세 메모를 입력하세요 (최대 ${MAX_TODO_NOTE_LENGTH}자)`}
+            value={todoNote}
+            onChange={(event) => {
+              setTodoNote(event.target.value);
+              setFormMessage("");
+            }}
+          />
+        </div>
+
+        <div className="todo-upload-panel">
+          <div className="todo-upload-head">
+            <p className="todo-upload-title">파일 첨부</p>
+            <p className="todo-upload-caption">현재는 UI 단계이며, 다음 단계에서 Storage 업로드를 연결합니다.</p>
+          </div>
+          <input id="todo-files" className="todo-file-input" type="file" multiple onChange={handleFilesSelected} />
+          <p className="todo-upload-selected" aria-live="polite">
+            {selectedFileNames.length > 0
+              ? `선택됨: ${selectedFileNames.join(", ")}`
+              : "선택된 파일이 없습니다."}
+          </p>
+        </div>
       </form>
 
       <p id="form-message" className="form-message" role="status" aria-live="polite">
@@ -235,8 +398,7 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
         <div className="filters" role="group" aria-label="할 일 필터">
           {FILTERS.map((filter) => {
             const isActive = filter === currentFilter;
-            const label =
-              filter === "all" ? "전체" : filter === "active" ? "진행중" : "완료";
+            const label = filter === "all" ? "전체" : filter === "active" ? "진행중" : "완료";
 
             return (
               <button
@@ -267,6 +429,7 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
         <ul id="todo-list" className="todo-list" aria-live="polite">
           {filteredTodos.map((todo, index) => {
             const isEditing = editingId === todo.id;
+            const periodLabel = formatPeriodLabel(todo);
 
             return (
               <li
@@ -285,32 +448,77 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
 
                 <div className="todo-main">
                   {isEditing ? (
-                    <input
-                      ref={editingInputRef}
-                      className="edit-input"
-                      type="text"
-                      value={editingText}
-                      onChange={(event) => {
-                        setEditingText(event.target.value);
-                        setFormMessage("");
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          cancelEditing();
-                          return;
-                        }
+                    <div className="todo-edit-fields">
+                      <input
+                        className="edit-input"
+                        type="text"
+                        value={editingTitle}
+                        onChange={(event) => {
+                          setEditingTitle(event.target.value);
+                          setFormMessage("");
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            cancelEditing();
+                            return;
+                          }
 
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          saveEditing(todo.id);
-                        }
-                      }}
-                      aria-label="할 일 수정 입력"
-                      disabled={isPending}
-                    />
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            saveEditing(todo.id);
+                          }
+                        }}
+                        aria-label="할 일 제목 수정 입력"
+                        disabled={isPending}
+                      />
+
+                      <textarea
+                        className="edit-note-input"
+                        rows={3}
+                        value={editingNote}
+                        onChange={(event) => {
+                          setEditingNote(event.target.value);
+                          setFormMessage("");
+                        }}
+                        aria-label="할 일 메모 수정 입력"
+                        disabled={isPending}
+                      />
+
+                      <div className="edit-period-row">
+                        <input
+                          className="edit-period-input"
+                          type="datetime-local"
+                          value={editingStartAt}
+                          onChange={(event) => {
+                            setEditingStartAt(event.target.value);
+                            setFormMessage("");
+                          }}
+                          aria-label="시작일 수정 입력"
+                          disabled={isPending}
+                        />
+                        <span className="period-separator">~</span>
+                        <input
+                          className="edit-period-input"
+                          type="datetime-local"
+                          value={editingDueAt}
+                          onChange={(event) => {
+                            setEditingDueAt(event.target.value);
+                            setFormMessage("");
+                          }}
+                          aria-label="마감일 수정 입력"
+                          disabled={isPending}
+                        />
+                      </div>
+                    </div>
                   ) : (
-                    <p className="todo-text">{todo.text}</p>
+                    <>
+                      <p className="todo-text">{todo.text}</p>
+                      {todo.note ? <p className="todo-note">{todo.note}</p> : null}
+                      <p className="todo-meta">
+                        {periodLabel ? <span className="todo-due-chip">{periodLabel}</span> : null}
+                      </p>
+                    </>
                   )}
                 </div>
 
@@ -325,12 +533,7 @@ export function TodoApp({ initialTodos, initialMessage = "" }: TodoAppProps) {
                       >
                         저장
                       </button>
-                      <button
-                        type="button"
-                        className="action-btn"
-                        onClick={cancelEditing}
-                        disabled={isPending}
-                      >
+                      <button type="button" className="action-btn" onClick={cancelEditing} disabled={isPending}>
                         취소
                       </button>
                     </>
