@@ -37,6 +37,7 @@ test.describe("MVP Smoke", () => {
 
     await page.locator("#todo-input").fill(originalText);
     await page.locator("#todo-note").fill(originalNote);
+    await page.locator("#todo-period-trigger").click();
     await page.locator("#todo-start-at").fill("2026-02-19T09:00");
     await page.locator("#todo-due-at").fill("2026-02-19T10:00");
     await page.locator("#todo-files").setInputFiles("README.md");
