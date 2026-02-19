@@ -59,14 +59,14 @@ describe("validateCreateTodoInput", () => {
     expect(typeof result.data.dueAt).toBe("string");
   });
 
-  it("rejects note longer than 2000 chars", () => {
+  it("rejects note longer than 200 chars", () => {
     const result = validateCreateTodoInput({
       text: "todo",
-      note: "a".repeat(2001),
+      note: "a".repeat(201),
       startAt: "",
       dueAt: ""
     });
-    expect(result).toEqual({ ok: false, message: "메모는 2000자를 초과할 수 없습니다." });
+    expect(result).toEqual({ ok: false, message: "메모는 200자를 초과할 수 없습니다." });
   });
 });
 

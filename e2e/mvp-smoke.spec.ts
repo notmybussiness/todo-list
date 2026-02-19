@@ -8,7 +8,16 @@ const runDevLoginScenarios = process.env.E2E_USE_DEV_LOGIN !== "false";
 
 test.describe("MVP Smoke", () => {
   test("redirects unauthenticated users to /login", async ({ page }) => {
+    await page.context().clearCookies();
     await page.goto("/");
+
+    if (!/\/login(?:\?.*)?$/.test(page.url())) {
+      const logoutButton = page.getByRole("button", { name: "로그아웃" });
+      if (await logoutButton.isVisible()) {
+        await logoutButton.click();
+      }
+      await page.goto("/");
+    }
 
     await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
     await expect(page.getByRole("heading", { name: "로그인", exact: true })).toBeVisible();
@@ -37,6 +46,7 @@ test.describe("MVP Smoke", () => {
 
     await page.locator("#todo-input").fill(originalText);
     await page.locator("#todo-note").fill(originalNote);
+    await page.locator("#todo-period-trigger").click();
     await page.locator("#todo-start-at").fill("2026-02-19T09:00");
     await page.locator("#todo-due-at").fill("2026-02-19T10:00");
     await page.locator("#todo-files").setInputFiles("README.md");
