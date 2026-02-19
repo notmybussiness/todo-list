@@ -5,6 +5,10 @@ Google / Kakao OAuth 로그인 기반의 개인 Todo 앱입니다.
 사용자마다 할 일이 분리되어 저장되며, 추가/수정/삭제/필터 기능을 제공합니다.
 제목+메모, 시작~마감 기간, 마감 알림 메일(Cron) 기능을 포함합니다.
 
+## 배포 주소
+- 프로덕션: https://todoapp-seven-taupe-34.vercel.app
+- 저장소: https://github.com/notmybussiness/todo-list
+
 ## 사용 기술
 - Next.js 14 (App Router)
 - TypeScript
@@ -25,3 +29,4 @@ Google / Kakao OAuth 로그인 기반의 개인 Todo 앱입니다.
 ## 운영 메모
 - 알림 메일 설정 문서:
   - `docs/reminder-mail-setup.md`
+- SMTP 환경변수를 설정하지 않으면, 나머지 기능은 동작하고 메일 발송만 건너뜁니다.
