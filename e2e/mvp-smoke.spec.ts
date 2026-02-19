@@ -19,6 +19,8 @@ test.describe("MVP Smoke", () => {
 
     const originalText = uniqueTodo("MVP-SMOKE");
     const updatedText = `${originalText}-EDIT`;
+    const originalNote = "초기 메모";
+    const updatedNote = "수정 메모";
 
     await page.goto("/login");
 
@@ -34,7 +36,13 @@ test.describe("MVP Smoke", () => {
     await expect(page.getByRole("heading", { name: "TODO 리스트" })).toBeVisible();
 
     await page.locator("#todo-input").fill(originalText);
+    await page.locator("#todo-note").fill(originalNote);
+    await page.locator("#todo-start-at").fill("2026-02-19T09:00");
+    await page.locator("#todo-due-at").fill("2026-02-19T10:00");
+    await page.locator("#todo-files").setInputFiles("README.md");
+    await expect(page.locator(".todo-upload-selected")).toContainText("README.md");
     await page.getByRole("button", { name: "추가" }).click();
+    await expect(page.getByRole("button", { name: "추가" })).toBeEnabled();
 
     const createdItem = page.locator(".todo-item", { hasText: originalText }).first();
     await expect(createdItem).toBeVisible();
@@ -55,10 +63,12 @@ test.describe("MVP Smoke", () => {
     const editInput = page.locator(".edit-input").first();
     await expect(editInput).toBeVisible();
     await editInput.fill(updatedText);
+    await page.locator(".edit-note-input").first().fill(updatedNote);
     await editInput.press("Enter");
 
     const updatedItem = page.locator(".todo-item", { hasText: updatedText }).first();
     await expect(updatedItem).toBeVisible();
+    await expect(updatedItem).toContainText(updatedNote);
 
     await updatedItem.getByRole("button", { name: "삭제" }).click();
     await expect(page.locator(".todo-item", { hasText: updatedText })).toHaveCount(0);

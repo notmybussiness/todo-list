@@ -1,4 +1,5 @@
 export const MAX_TODO_LENGTH = 200;
+export const MAX_TODO_NOTE_LENGTH = 2000;
 
 export const FILTERS = ["all", "active", "completed"] as const;
 
