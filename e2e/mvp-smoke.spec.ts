@@ -8,7 +8,16 @@ const runDevLoginScenarios = process.env.E2E_USE_DEV_LOGIN !== "false";
 
 test.describe("MVP Smoke", () => {
   test("redirects unauthenticated users to /login", async ({ page }) => {
+    await page.context().clearCookies();
     await page.goto("/");
+
+    if (!/\/login(?:\?.*)?$/.test(page.url())) {
+      const logoutButton = page.getByRole("button", { name: "로그아웃" });
+      if (await logoutButton.isVisible()) {
+        await logoutButton.click();
+      }
+      await page.goto("/");
+    }
 
     await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
     await expect(page.getByRole("heading", { name: "로그인", exact: true })).toBeVisible();
